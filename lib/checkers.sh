@@ -64,3 +64,32 @@ check_git_submodule() { # NAME PARENT SUBPATH [FETCH]
     _emit OK "$name" "$type" "$head_sha" "$target" "up to date ($target)"
   fi
 }
+
+check_claude_plugin() { # NAME MARKETPLACE
+  local name="$1" mkt="$2" type="claude-plugin"
+  local pdir="${PLUGINS_DIR:-$HOME/.claude/plugins}"
+  if ! command -v jq >/dev/null 2>&1; then
+    _emit SKIP "$name" "$type" "" "" "jq required for plugin checks (brew install jq)"; return 0
+  fi
+  local inst="$pdir/installed_plugins.json"
+  local mp="$pdir/marketplaces/$mkt/.claude-plugin/marketplace.json"
+  local key="$name@$mkt"
+  if [ ! -f "$inst" ]; then _emit SKIP "$name" "$type" "" "" "no installed_plugins.json"; return 0; fi
+  local inst_ver inst_sha
+  inst_ver="$(jq -r --arg k "$key" '.plugins[$k][0].version // ""' "$inst")"
+  inst_sha="$(jq -r --arg k "$key" '.plugins[$k][0].gitCommitSha // ""' "$inst")"
+  if [ -z "$inst_ver" ] && [ -z "$inst_sha" ]; then
+    _emit SKIP "$name" "$type" "" "" "not installed from $mkt"; return 0
+  fi
+  if [ ! -f "$mp" ]; then _emit INFO "$name" "$type" "${inst_ver:-$inst_sha}" "" "marketplace manifest missing; run with --fetch"; return 0; fi
+  local latest_ver latest_sha status installed latest
+  latest_ver="$(jq -r --arg n "$name" '.plugins[]|select(.name==$n)|.version // ""' "$mp")"
+  latest_sha="$(jq -r --arg n "$name" '.plugins[]|select(.name==$n)|.source.sha // ""' "$mp")"
+  if [ -n "$latest_ver" ]; then
+    installed="$inst_ver"; latest="$latest_ver"
+  else
+    installed="$inst_sha"; latest="$latest_sha"
+  fi
+  status="$(decide_status "$installed" "$latest")"
+  _emit "$status" "$name" "$type" "$installed" "$latest" "marketplace=$mkt"
+}
