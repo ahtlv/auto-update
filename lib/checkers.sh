@@ -110,3 +110,21 @@ check_brew() { # NAME (formula)
   latest="$(printf '%s\n' "$out" | sed -n 's/.*< *\([^ ]*\).*/\1/p' | head -1)"
   _emit OUTDATED "$name" "$type" "$installed" "$latest" "brew formula"
 }
+
+check_pip_venv() { # NAME VENV
+  local name="$1" type="pip-venv" venv
+  venv="$(_expand_tilde "$2")"
+  local pip="$venv/bin/pip"
+  if [ ! -x "$pip" ]; then
+    _emit SKIP "$name" "$type" "" "" "venv pip not found: $pip"; return 0
+  fi
+  local row
+  row="$("$pip" list --outdated 2>/dev/null | awk -v n="$name" '$1==n {print; exit}')"
+  if [ -z "$row" ]; then
+    _emit OK "$name" "$type" "" "" "up to date"; return 0
+  fi
+  local installed latest
+  installed="$(printf '%s\n' "$row" | awk '{print $2}')"
+  latest="$(printf '%s\n' "$row" | awk '{print $3}')"
+  _emit OUTDATED "$name" "$type" "$installed" "$latest" "pip in $venv"
+}
