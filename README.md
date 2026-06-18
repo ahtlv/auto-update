@@ -1,29 +1,147 @@
 # auto-update
 
-One command to check your whole Claude Code dev environment — plugins, MCP
-servers, git repos & submodules, brew/pip/CLI tools — and update only what you pick.
+**Одна команда, чтобы проверить всё твоё окружение Claude Code** — плагины,
+MCP-серверы, git-репозитории и submodules, тулзы из brew/pip/CLI — и обновить
+только то, что выберешь.
 
-## Install
+Никакого «обхожу каждый инструмент руками и забываю половину». Сказал
+«запусти автоапдейтер» — получил отчёт что устарело и что в этом нового —
+обновил нужное.
+
+---
+
+## Установка
 
 ```bash
 git clone https://github.com/ahtlv/auto-update ~/Work/auto-update
 cd ~/Work/auto-update && ./install.sh
 ```
 
-Restart Claude Code, then say **"запусти автоапдейтер"** (or "update my environment").
+`install.sh` сделает три вещи (безопасно, можно запускать повторно):
+1. подключит скилл к Claude Code (симлинк в `~/.claude/skills/`);
+2. создаст твой личный реестр `~/.claude/auto-update/registry.conf`;
+3. пропишет авто-обновление самого инструмента.
 
-## How it works
+Дальше **перезапусти Claude Code** (новый чат или `Reload Window`).
 
-- Engine: `check.sh` + `lib/` (dependency-free bash; `jq` only for plugin checks).
-- Your component list: `~/.claude/auto-update/registry.conf` (yours; never
-  overwritten by updates). First run auto-discovers what's on your machine.
-- Update the tool itself: `git -C ~/Work/auto-update pull` (or let auto-update do it).
+---
 
-## Add a component manually
+## Как пользоваться
 
-Append a block to `~/.claude/auto-update/registry.conf` — see
-`registry.example.conf` for every supported type.
+Просто скажи Claude:
 
-## Requirements
+> **«запусти автоапдейтер»**  ·  «обнови окружение»  ·  «проверь обновления»
 
-bash, git. Optional: `jq` (plugin version checks), Homebrew/pip as needed.
+Первый раз реестр пустой — скилл сам просканирует машину и спросит, что внести
+(это онбординг, отвечаешь «да/нет» по списку). Дальше — обычный цикл:
+
+```
+🔄 Авто-апдейт окружения
+
+ПЛАГИНЫ
+  1. superpowers     6.0.2 → 6.1.0    ✦ новый skill, фикс багов
+ТУЛЗЫ
+  2. ffmpeg          8.1.1 → 8.1.2
+     uv              актуально ✓
+
+Что обновляем? [всё / номера через запятую / только без ⚠️ / ничего]
+```
+
+`✓` — актуально (сворачивается), `⚠️` — возможны breaking changes. Выбираешь —
+скилл обновляет только выбранное.
+
+---
+
+## Что происходит под капотом (5 фаз)
+
+| Фаза | Что делает |
+|------|-----------|
+| **CHECK** | сравнивает установленные и доступные версии (read-only) |
+| **DISCOVER** | находит новое на машине, чего нет в реестре, → предлагает внести |
+| **RESEARCH** | по устаревшему собирает краткое «что изменилось» + флаг breaking |
+| **REPORT** | показывает отчёт, спрашивает что обновить |
+| **APPLY** | обновляет только выбранное, делает пост-хуки |
+
+Движок (`check.sh`) ничего не меняет сам — апдейт только по твоему выбору.
+
+---
+
+## Реестр: как добавить компонент
+
+Твой список компонентов — `~/.claude/auto-update/registry.conf`. Это простой
+текст: один компонент = блок строк `key=value`, блоки разделяются пустой
+строкой. Допиши блок руками или попроси Claude — скилл сам дописывает найденное.
+
+```text
+name=telegram-mcp
+type=git-repo
+path=~/Work/telegram-mcp
+post_update=uv sync
+```
+
+Поддерживаемые типы: `claude-plugin`, `git-repo`, `git-submodule`, `brew`,
+`pip-venv`, `custom`. Образцы каждого — в [`registry.example.conf`](registry.example.conf).
+
+---
+
+## Обновить сам инструмент
+
+auto-update обновляет сам себя — он добавлен в твой реестр как `git-repo`.
+Либо вручную:
+
+```bash
+git -C ~/Work/auto-update pull
+```
+
+---
+
+## Требования
+
+`bash`, `git`. Опционально: `jq` (нужен только для проверки плагинов — без него
+плагины помечаются SKIP, остальное работает), Homebrew / pip — если их компоненты
+есть в реестре.
+
+---
+
+## Для AI-агента
+
+Если тебя, агент, попросили поработать с этим скиллом — вот как.
+
+**Чтобы ПОЛЬЗОВАТЬСЯ скиллом** (проверить/обновить окружение пользователя):
+1. Активируй скилл `auto-update` (он триггерится фразами выше) и следуй
+   [`SKILL.md`](SKILL.md) — там 5 фаз пошагово.
+2. Движок под рукой:
+   - `./check.sh [--fetch]` → печатает TSV: `status⇥name⇥type⇥installed⇥latest⇥detail`.
+     `--fetch` обновляет манифесты маркетплейсов и делает `git fetch` (медленнее,
+     но точнее). Статусы: `OK` актуально · `OUTDATED` есть апдейт · `INFO` нельзя
+     определить · `SKIP` нет на машине/нет зависимости · `ERROR` битая запись.
+   - `./discover.sh` → TSV `type⇥name⇥hint` для компонентов вне реестра.
+3. Реестр пользователя — `~/.claude/auto-update/registry.conf`. **Никогда не
+   перезаписывай его целиком** — только дописывай блоки (`>>`).
+4. Апдейты — только по явному выбору пользователя (фаза APPLY). После апдейта
+   плагинов/скиллов предупреди, что нужен рестарт сессии Claude.
+
+**Чтобы ДОРАБАТЫВАТЬ код скилла** — читай [`CLAUDE.md`](CLAUDE.md): там
+архитектура, контракт чекеров, грабли машины (bash 3.2, BSD awk, `npm`→`pnpm`,
+симлинки) и backlog. Тесты: `bash tests/run.sh` (должно быть `0 failures`).
+
+**Что обычно «дальше»:** добавить новый тип компонента (новый `check_<type>` в
+`lib/checkers.sh` + тест), закрыть пункт из backlog в `CLAUDE.md`, или расширить
+DISCOVER. Любая правотка формата реестра или контракта чекеров — синхронно во
+всех потребителях + тестах.
+
+---
+
+## Решение проблем
+
+- **Плагины показываются `SKIP`** → не установлен `jq` (`brew install jq`).
+- **`brew`-проверка медленная** → это нормально на «холодную»; движок гоняет
+  `brew outdated` с отключённым авто-апдейтом, но первый прогон brew всё равно
+  может тянуть индекс.
+- **После апдейта плагина ничего не поменялось** → нужен рестарт Claude Code.
+- **Новый компонент не виден** → проверь, что блок в `registry.conf` отделён
+  пустой строкой и ключи без опечаток.
+
+---
+
+Версия в [`VERSION`](VERSION) · история в [`CHANGELOG.md`](CHANGELOG.md) · лицензия — на твоё усмотрение (для публичной раздачи студентам удобна MIT)
