@@ -10,6 +10,16 @@ MCP-серверы, git-репозитории и submodules, тулзы из br
 
 ---
 
+## Quick start
+
+```bash
+git clone https://github.com/ahtlv/auto-update ~/Work/auto-update
+cd ~/Work/auto-update && ./install.sh
+# → перезапусти Claude Code → скажи «запусти автоапдейтер»
+```
+
+---
+
 ## Установка
 
 ```bash
