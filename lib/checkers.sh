@@ -128,3 +128,18 @@ check_pip_venv() { # NAME VENV
   latest="$(printf '%s\n' "$row" | awk '{print $3}')"
   _emit OUTDATED "$name" "$type" "$installed" "$latest" "pip in $venv"
 }
+
+check_custom() { # NAME CHECKCMD LATESTCMD
+  local name="$1" type="custom" checkcmd="$2" latestcmd="$3"
+  if [ -z "$checkcmd" ]; then
+    _emit SKIP "$name" "$type" "" "" "no check command"; return 0
+  fi
+  local installed latest status
+  installed="$(eval "$checkcmd" 2>/dev/null)"
+  if [ -z "$latestcmd" ]; then
+    _emit INFO "$name" "$type" "$installed" "" "no remote check; update applies blindly"; return 0
+  fi
+  latest="$(eval "$latestcmd" 2>/dev/null)"
+  status="$(decide_status "$installed" "$latest")"
+  _emit "$status" "$name" "$type" "$installed" "$latest" "custom"
+}
