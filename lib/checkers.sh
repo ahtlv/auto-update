@@ -93,3 +93,20 @@ check_claude_plugin() { # NAME MARKETPLACE
   status="$(decide_status "$installed" "$latest")"
   _emit "$status" "$name" "$type" "$installed" "$latest" "marketplace=$mkt"
 }
+
+check_brew() { # NAME (formula)
+  local name="$1" type="brew"
+  if ! command -v brew >/dev/null 2>&1; then
+    _emit SKIP "$name" "$type" "" "" "brew not installed"; return 0
+  fi
+  local out
+  out="$(HOMEBREW_NO_AUTO_UPDATE=1 brew outdated --formula --verbose "$name" 2>/dev/null || true)"
+  if [ -z "$out" ]; then
+    _emit OK "$name" "$type" "" "" "up to date"; return 0
+  fi
+  # format: "name (installed) < latest"
+  local installed latest
+  installed="$(printf '%s\n' "$out" | sed -n "s/^$name (\([^)]*\)).*/\1/p" | head -1)"
+  latest="$(printf '%s\n' "$out" | sed -n 's/.*< *\([^ ]*\).*/\1/p' | head -1)"
+  _emit OUTDATED "$name" "$type" "$installed" "$latest" "brew formula"
+}
