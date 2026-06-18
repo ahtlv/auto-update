@@ -6,11 +6,25 @@ LINK="$SKILLS_DIR/auto-update"
 CFG_DIR="$HOME/.claude/auto-update"
 REG="$CFG_DIR/registry.conf"
 
+# Resolve a path to its physical absolute form. Prefer `readlink -f`, but fall
+# back to `cd -P` for macOS < Ventura whose stock readlink has no -f flag.
+_realpath() {
+  if readlink -f / >/dev/null 2>&1; then
+    readlink -f "$1"
+  elif [ -d "$1" ]; then
+    (cd "$1" 2>/dev/null && pwd -P)
+  else
+    local d
+    d="$(cd "$(dirname "$1")" 2>/dev/null && pwd -P)"
+    printf '%s/%s\n' "$d" "$(basename "$1")"
+  fi
+}
+
 mkdir -p "$SKILLS_DIR"
 
 # 1. Idempotent symlink (never clobber a real dir or a different link).
 if [ -L "$LINK" ]; then
-  if [ "$(readlink -f "$LINK")" = "$(readlink -f "$REPO_DIR")" ]; then
+  if [ "$(_realpath "$LINK")" = "$(_realpath "$REPO_DIR")" ]; then
     echo "OK: skill already linked"
   else
     echo "WARN: $LINK points elsewhere ($(readlink "$LINK")); leaving it untouched"

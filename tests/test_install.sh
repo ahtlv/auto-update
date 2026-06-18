@@ -12,8 +12,10 @@ assert_eq "$(readlink -f "$repo")" "$(readlink -f "$link")" "install: symlink po
 assert_eq "yes" "$([ -f "$sandbox/.claude/auto-update/registry.conf" ] && echo yes)" "install: seeds registry.conf"
 assert_contains "$(cat "$sandbox/.claude/auto-update/registry.conf")" "name=auto-update" "install: adds self-update entry"
 
-# idempotent: second run must not error and must not duplicate the self entry
-HOME="$sandbox" bash "$repo/install.sh" >/dev/null 2>&1
+# idempotent: second run must not error, must not duplicate the self entry,
+# and must recognize the existing link (exercises the _realpath comparison).
+rerun="$(HOME="$sandbox" bash "$repo/install.sh" 2>&1)"
 count="$(grep -c '^name=auto-update$' "$sandbox/.claude/auto-update/registry.conf")"
 assert_eq "1" "$count" "install: self entry not duplicated on re-run"
+assert_contains "$rerun" "already linked" "install: re-run resolves existing link (no re-link/clobber)"
 rm -rf "$sandbox"

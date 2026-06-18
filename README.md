@@ -144,4 +144,4 @@ DISCOVER. Любая правотка формата реестра или ко�
 
 ---
 
-Версия в [`VERSION`](VERSION) · история в [`CHANGELOG.md`](CHANGELOG.md) · лицензия — на твоё усмотрение (для публичной раздачи студентам удобна MIT)
+Лицензия: [MIT](LICENSE) · версия в [`VERSION`](VERSION) · история в [`CHANGELOG.md`](CHANGELOG.md)

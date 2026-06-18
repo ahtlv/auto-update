@@ -1,0 +1,27 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Личный реестр пользователя — в репо едет только registry.example.conf
+registry.conf
+
+# Логи и временные файлы
+*.log
+*.tmp
+tmp/
+.cache/
+
+# Секреты / окружение — НИКОГДА в публичный репо
+.env
+.env.*
+*.secret
+*.key
+*.pem
+secrets/
+
+# Редакторы
+*.swp
+*~
+.idea/
+.vscode/
