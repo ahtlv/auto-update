@@ -34,3 +34,33 @@ check_git_repo() { # NAME PATH [FETCH]
     _emit OK "$name" "$type" "$head_sha" "$up_sha" "up to date"
   fi
 }
+
+check_git_submodule() { # NAME PARENT SUBPATH [FETCH]
+  local name="$1" parent type="git-submodule" subpath="$3" fetch="${4:-}"
+  parent="$(_expand_tilde "$2")"
+  local sub="$parent/$subpath"
+  if [ ! -d "$parent/.git" ] && ! git -C "$parent" rev-parse --git-dir >/dev/null 2>&1; then
+    _emit SKIP "$name" "$type" "" "" "parent not found: $parent"; return 0
+  fi
+  if ! git -C "$sub" rev-parse --git-dir >/dev/null 2>&1; then
+    _emit SKIP "$name" "$type" "" "" "submodule not initialized: $subpath"; return 0
+  fi
+  [ "$fetch" = "fetch" ] && git -C "$sub" fetch -q 2>/dev/null
+  local remote branch cfg target
+  remote="$(git -C "$sub" remote | head -1)"; [ -z "$remote" ] && remote="origin"
+  cfg="$(git -C "$parent" config -f "$parent/.gitmodules" "submodule.$name.branch" 2>/dev/null)"
+  if [ -z "$cfg" ] || [ "$cfg" = "." ]; then
+    target="$(git -C "$sub" symbolic-ref -q "refs/remotes/$remote/HEAD" 2>/dev/null | sed "s|refs/remotes/||")"
+    [ -z "$target" ] && target="$remote/main"
+  else
+    target="$remote/$cfg"
+  fi
+  local behind head_sha
+  head_sha="$(git -C "$sub" rev-parse --short HEAD 2>/dev/null)"
+  behind="$(git -C "$sub" rev-list --count "HEAD..refs/remotes/$target" 2>/dev/null)"
+  if [ "${behind:-0}" -gt 0 ]; then
+    _emit OUTDATED "$name" "$type" "$head_sha" "$target" "behind=$behind on $target"
+  else
+    _emit OK "$name" "$type" "$head_sha" "$target" "up to date ($target)"
+  fi
+}
