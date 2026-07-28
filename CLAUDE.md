@@ -10,8 +10,8 @@
 студентам курса — поэтому **движок не содержит личных компонентов**, у каждого
 пользователя свой реестр.
 
-- **Spec:** `~/Work/claude-config/docs/superpowers/specs/2026-06-18-auto-update-skill-design.md`
-- **План реализации:** `~/Work/claude-config/docs/superpowers/plans/2026-06-18-auto-update.md`
+- **Spec:** `docs/superpowers/specs/2026-06-18-auto-update-skill-design.md`
+- **План реализации:** `docs/superpowers/plans/2026-06-18-auto-update.md`
 - Версия: `VERSION` (semver) + git-теги `vX.Y.Z` + `CHANGELOG.md`.
 
 ## Архитектура: гибрид + два слоя
